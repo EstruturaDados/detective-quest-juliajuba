@@ -1,47 +1,114 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
-// Desafio Detective Quest
-// Tema 4 - Árvores e Tabela Hash
-// Este código inicial serve como base para o desenvolvimento das estruturas de navegação, pistas e suspeitos.
-// Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
+typedef struct Sala {
+    char *nome;
+    struct Sala *esq;
+    struct Sala *dir;
+} Sala;
 
-int main() {
+// cria dinamicamente uma sala
+Sala *criarSala(const char *nome, Sala *esq, Sala *dir) {
+    Sala *s = malloc(sizeof(Sala));
+    if (!s) {
+        fprintf(stderr, "Erro de alocação\n");
+        exit(EXIT_FAILURE);
+    }
+    s->nome = strdup(nome);
+    s->esq = esq;
+    s->dir = dir;
+    return s;
+}
 
-    // 🌱 Nível Novato: Mapa da Mansão com Árvore Binária
-    //
-    // - Crie uma struct Sala com nome, e dois ponteiros: esquerda e direita.
-    // - Use funções como criarSala(), conectarSalas() e explorarSalas().
-    // - A árvore pode ser fixa: Hall de Entrada, Biblioteca, Cozinha, Sótão etc.
-    // - O jogador deve poder explorar indo à esquerda (e) ou à direita (d).
-    // - Finalize a exploração com uma opção de saída (s).
-    // - Exiba o nome da sala a cada movimento.
-    // - Use recursão ou laços para caminhar pela árvore.
-    // - Nenhuma inserção dinâmica é necessária neste nível.
+// libera a árvore recursivamente
+void liberarSalas(Sala *r) {
+    if (!r) return;
+    liberarSalas(r->esq);
+    liberarSalas(r->dir);
+    free(r->nome);
+    free(r);
+}
 
-    // 🔍 Nível Aventureiro: Armazenamento de Pistas com Árvore de Busca
-    //
-    // - Crie uma struct Pista com campo texto (string).
-    // - Crie uma árvore binária de busca (BST) para inserir as pistas coletadas.
-    // - Ao visitar salas específicas, adicione pistas automaticamente com inserirBST().
-    // - Implemente uma função para exibir as pistas em ordem alfabética (emOrdem()).
-    // - Utilize alocação dinâmica e comparação de strings (strcmp) para organizar.
-    // - Não precisa remover ou balancear a árvore.
-    // - Use funções para modularizar: inserirPista(), listarPistas().
-    // - A árvore de pistas deve ser exibida quando o jogador quiser revisar evidências.
+// lê uma opção do usuário: 'e', 'd' ou 's'
+char lerOpcao() {
+    char buffer[64];
+    while (1) {
+        if (!fgets(buffer, sizeof(buffer), stdin)) return 's';
+        // encontra primeiro caractere não-espaco
+        for (int i = 0; buffer[i]; ++i) {
+            if (!isspace((unsigned char)buffer[i])) {
+                return (char)tolower((unsigned char)buffer[i]);
+            }
+        }
+        printf("Opção inválida. Digite 'e' (esquerda), 'd' (direita) ou 's' (sair): ");
+    }
+}
 
-    // 🧠 Nível Mestre: Relacionamento de Pistas com Suspeitos via Hash
-    //
-    // - Crie uma struct Suspeito contendo nome e lista de pistas associadas.
-    // - Crie uma tabela hash (ex: array de ponteiros para listas encadeadas).
-    // - A chave pode ser o nome do suspeito ou derivada das pistas.
-    // - Implemente uma função inserirHash(pista, suspeito) para registrar relações.
-    // - Crie uma função para mostrar todos os suspeitos e suas respectivas pistas.
-    // - Adicione um contador para saber qual suspeito foi mais citado.
-    // - Exiba ao final o “suspeito mais provável” baseado nas pistas coletadas.
-    // - Para hashing simples, pode usar soma dos valores ASCII do nome ou primeira letra.
-    // - Em caso de colisão, use lista encadeada para tratar.
-    // - Modularize com funções como inicializarHash(), buscarSuspeito(), listarAssociacoes().
+// explora a mansão interativamente a partir de uma sala
+void explorarSalas(Sala *raiz) {
+    Sala *atual = raiz;
+    printf("Exploração iniciada. Digite 'e' para esquerda, 'd' para direita, 's' para sair.\n\n");
+    while (atual) {
+        printf("Você está em: %s\n", atual->nome);
+        // se nó-folha, fim do caminho
+        if (!atual->esq && !atual->dir) {
+            printf("Você chegou ao fim deste caminho (sala-folha).\n");
+            break;
+        }
+        printf("Escolha um caminho [e/d] ou 's' para sair: ");
+        char op = lerOpcao();
+        if (op == 's') {
+            printf("Exploração encerrada pelo jogador.\n");
+            break;
+        } else if (op == 'e') {
+            if (atual->esq) {
+                atual = atual->esq;
+            } else {
+                printf("Não há caminho à esquerda a partir daqui. Tente outra opção.\n");
+            }
+        } else if (op == 'd') {
+            if (atual->dir) {
+                atual = atual->dir;
+            } else {
+                printf("Não há caminho à direita a partir daqui. Tente outra opção.\n");
+            }
+        } else {
+            printf("Opção inválida. Use 'e', 'd' ou 's'.\n");
+        }
+        printf("\n");
+    }
+}
+
+int main(void) {
+    // montar a árvore estaticamente (estrutura imutável em tempo de execução)
+    // Exemplo de mapa da mansão:
+    //                    Hall de Entrada
+    //                   /               \
+    //            Biblioteca          Sala de Jantar
+    //            /       \            /         \
+    //        Escritório  Jardim   Cozinha     Corredor
+    //                             (folha)     /     \
+    //                                       Quarto  Banheiro
+
+    Sala *escritorio = criarSala("Escritório", NULL, NULL);
+    Sala *jardim = criarSala("Jardim Interno", NULL, NULL);
+    Sala *biblioteca = criarSala("Biblioteca", escritorio, jardim);
+
+    Sala *cozinha = criarSala("Cozinha", NULL, NULL);
+    Sala *quarto = criarSala("Quarto", NULL, NULL);
+    Sala *banheiro = criarSala("Banheiro", NULL, NULL);
+    Sala *corredor = criarSala("Corredor", quarto, banheiro);
+    Sala *salaJantar = criarSala("Sala de Jantar", cozinha, corredor);
+
+    Sala *hall = criarSala("Hall de Entrada", biblioteca, salaJantar);
+
+    // iniciar exploração
+    explorarSalas(hall);
+
+    // liberar memória
+    liberarSalas(hall);
 
     return 0;
 }
-
